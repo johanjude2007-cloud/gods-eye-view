@@ -81,6 +81,11 @@ import {
   DEFAULT_HK_MAX_SOURCES,
   HK_ANCHORS,
   HK_MAX_CATALOG_BYTES,
+  DEFAULT_SG_CAMERAS_URL,
+  SG_IMAGE_ORIGIN,
+  DEFAULT_SG_MAX_SOURCES,
+  SG_ANCHORS,
+  SG_MAX_CATALOG_BYTES,
   CCTV_SOURCE_FETCH_TIMEOUT_MS,
   TARKTEE_FETCH_TIMEOUT_MS,
   DELDOT_CCTV_URL,
@@ -148,6 +153,7 @@ import {
   decodeNumericEntities,
   isLikelyNycCoordinate,
   isLikelyHongKongCoordinate,
+  isLikelySingaporeCoordinate,
   isLikelyNorwayCoordinate,
   isLikelyTorontoCoordinate,
   isLikelyA22Coordinate,
@@ -2236,6 +2242,159 @@ export async function loadHkSourcesFromOpenData() {
     return prioritized;
   } catch (error) {
     console.warn('[CCTV] HK camera download error:', error?.message || error);
+    return [];
+  }
+}
+
+/** Pin a data.gov.sg traffic-image URL to its image host. */
+export function normalizeSingaporeImageUrl(raw) {
+  const text = String(raw ?? '').trim();
+  if (!text) return null;
+  let parsed;
+  try {
+    parsed = new URL(text);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+  parsed.protocol = 'https:';
+  return pinnedCameraUrl(parsed.toString(), SG_IMAGE_ORIGIN);
+}
+
+/** Friendly names for the keyless feed's border cameras; others fall back. */
+const SG_CAMERA_NAMES = {
+  2701: 'Woodlands Causeway (towards Johor)',
+  2702: 'Woodlands Checkpoint (towards BKE)',
+  2703: 'BKE (towards Woodlands Checkpoint)',
+  2704: 'Woodlands Flyover (towards Checkpoint)',
+  2705: 'BKE (towards Checkpoint)',
+  2706: 'Woodlands Checkpoint (towards Causeway)',
+  4703: 'Tuas Second Link',
+  4712: 'Tuas Checkpoint',
+  4713: 'Tuas Checkpoint (towards AYE)',
+  4798: 'AYE (towards Tuas)',
+  4799: 'AYE (towards MCE)',
+};
+
+/**
+ * One data.gov.sg traffic-images camera -> one catalog source, or null.
+ *
+ * The feed publishes coordinates but no camera facing, so headings use the
+ * shared id-hash fallback at low confidence and are corrected with the
+ * calibration gizmo. The image URL is per-capture (changes each refresh), so
+ * it is pinned by prefix, not rebuilt from the id.
+ *
+ * @param {object} cam A `cameras[]` entry from the API.
+ * @returns {?object}
+ */
+export function singaporeCameraToSource(cam) {
+  if (!cam || typeof cam !== 'object') return null;
+  const id = String(cam.camera_id ?? '').trim();
+  if (!/^[0-9]{1,10}$/.test(id)) return null;
+  const lat = toFiniteNumber(cam.location?.latitude);
+  const lon = toFiniteNumber(cam.location?.longitude);
+  if (!isLikelySingaporeCoordinate(lat, lon)) return null;
+  const imageUrl = normalizeSingaporeImageUrl(cam.image);
+  if (!imageUrl) return null;
+
+  const cameraId = `sg-${id}`;
+  const name = SG_CAMERA_NAMES[id] || `Singapore Camera ${id}`;
+  return {
+    id: cameraId,
+    name,
+    city: 'Singapore',
+    cityId: 'sg',
+    provider: 'LTA Singapore',
+    lat,
+    lon,
+    headingDeg: fallbackHeadingFromId(cameraId),
+    headingConfidence: 'low',
+    pitchDeg: -18,
+    fovDeg: 44,
+    rangeM: 145,
+    mountHeightM: 8,
+    // Low-lying island; the client's one-shot ground snap corrects.
+    groundElevationM: 15,
+    feedType: 'image',
+    url: imageUrl,
+    snapshotUrl: imageUrl,
+    sourceKind: 'sg-datagovsg-open-data',
+    license:
+      'Land Transport Authority via data.gov.sg — Singapore Open Data Licence',
+    code: cameraDisplayCode(id),
+  };
+}
+
+/**
+ * Fetch Singapore LTA traffic cameras from the keyless data.gov.sg real-time
+ * Traffic Images API. The public feed currently exposes only the Tuas and
+ * Woodlands border cameras; the full expressway set needs an LTA DataMall key.
+ *
+ * @returns {Promise<Array<object>>} Normalized camera source objects.
+ */
+export async function loadSingaporeSourcesFromOpenData() {
+  try {
+    const endpoint = process.env.CCTV_SG_CAMERAS_URL || DEFAULT_SG_CAMERAS_URL;
+    const resp = await fetch(endpoint, {
+      headers: { Accept: 'application/json' },
+      redirect: 'manual',
+      signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS),
+    });
+    const discard = async () => {
+      try {
+        await resp.body?.cancel();
+      } catch {
+        /* no-op */
+      }
+      return [];
+    };
+    if (resp.status >= 300 && resp.status < 400) {
+      console.warn(
+        '[CCTV] Singapore feed redirected; redirects are not followed',
+      );
+      return discard();
+    }
+    if (!resp.ok) {
+      console.warn('[CCTV] Singapore camera download failed:', resp.status);
+      return discard();
+    }
+    let payload;
+    try {
+      payload = await readResponseJsonCapped(resp, SG_MAX_CATALOG_BYTES);
+    } catch (error) {
+      if (error?.code === 'RESPONSE_TOO_LARGE') {
+        console.warn('[CCTV] Singapore feed body exceeded byte ceiling');
+        return [];
+      }
+      throw error;
+    }
+    const rows = Array.isArray(payload?.items?.[0]?.cameras)
+      ? payload.items[0].cameras
+      : [];
+    const cameras = [];
+    const seen = new Set();
+    for (const record of rows) {
+      const camera = singaporeCameraToSource(record);
+      if (!camera || seen.has(camera.id)) continue;
+      seen.add(camera.id);
+      cameras.push(camera);
+    }
+    const maxRaw = Number(
+      process.env.CCTV_SG_MAX_SOURCES || DEFAULT_SG_MAX_SOURCES,
+    );
+    const maxCount = Number.isFinite(maxRaw)
+      ? Math.max(8, Math.min(200, Math.floor(maxRaw)))
+      : DEFAULT_SG_MAX_SOURCES;
+    const prioritized = prioritizeSources(cameras, maxCount, SG_ANCHORS);
+    console.log(
+      `[CCTV] Loaded Singapore camera sources: ${cameras.length} (using nearest ${prioritized.length})`,
+    );
+    return prioritized;
+  } catch (error) {
+    console.warn(
+      '[CCTV] Singapore camera download error:',
+      error?.message || error,
+    );
     return [];
   }
 }

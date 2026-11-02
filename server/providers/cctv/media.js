@@ -9,6 +9,7 @@ import {
   CCTV_MEDIA_IDLE_TIMEOUT_MS,
   CCTV_MEDIA_MAX_BODY_BYTES,
   HK_IMAGE_ORIGIN,
+  SG_IMAGE_ORIGIN,
   KING_COUNTY_IMAGE_ORIGIN,
   NSW_IMAGE_ORIGIN,
   NSW_IMAGE_USER_AGENT,
@@ -143,6 +144,52 @@ const CCTV_RASTER_IMAGE_TYPES = new Set([
 export function cctvRasterImageType(contentType) {
   const essence = parseMediaType(contentType)?.essence;
   return CCTV_RASTER_IMAGE_TYPES.has(essence) ? essence : null;
+}
+
+/**
+ * The raster image type inferred from a body's leading magic bytes, or null.
+ *
+ * Some government feeds serve genuine JPEGs with a generic
+ * `application/octet-stream` (data.gov.sg does), so the declared type can't be
+ * trusted alone. Sniffing confirms the bytes really are an accepted image
+ * before the proxy relays them, and a non-image body still returns null.
+ *
+ * @param {Buffer|Uint8Array|null|undefined} body
+ * @returns {string|null}
+ */
+export function sniffRasterImageType(body) {
+  if (!body || body.length < 4) return null;
+  const b = body;
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47)
+    return 'image/png';
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38)
+    return 'image/gif';
+  if (
+    b.length >= 12 &&
+    b[0] === 0x52 &&
+    b[1] === 0x49 &&
+    b[2] === 0x46 &&
+    b[3] === 0x46 &&
+    b[8] === 0x57 &&
+    b[9] === 0x45 &&
+    b[10] === 0x42 &&
+    b[11] === 0x50
+  )
+    return 'image/webp';
+  if (
+    b.length >= 12 &&
+    b[4] === 0x66 &&
+    b[5] === 0x74 &&
+    b[6] === 0x79 &&
+    b[7] === 0x70 &&
+    b[8] === 0x61 &&
+    b[9] === 0x76 &&
+    b[10] === 0x69 &&
+    b[11] === 0x66
+  )
+    return 'image/avif';
+  return null;
 }
 
 /**
@@ -527,6 +574,7 @@ for (const prefix of [
   NSW_IMAGE_ORIGIN,
   CALGARY_IMAGE_ORIGIN,
   HK_IMAGE_ORIGIN,
+  SG_IMAGE_ORIGIN,
   KING_COUNTY_IMAGE_ORIGIN,
   WSDOT_IMAGE_ORIGIN,
   A22_IMAGE_ORIGIN,
@@ -660,10 +708,7 @@ export async function fetchCctvImageFromUpstream(
       fetchImpl,
     );
     if (!upstream) return null;
-    const contentType = cctvRasterImageType(
-      upstream.headers.get('content-type'),
-    );
-    if (!upstream.ok || !contentType) {
+    if (!upstream.ok) {
       try {
         await upstream.body?.cancel();
       } catch {
@@ -673,6 +718,12 @@ export async function fetchCctvImageFromUpstream(
     }
     const body = await readCappedResponseBytes(upstream, maxBytes);
     if (!body) return null;
+    // Trust the declared type when it is an accepted raster type; otherwise
+    // sniff the bytes, since some feeds mislabel real images (octet-stream).
+    const contentType =
+      cctvRasterImageType(upstream.headers.get('content-type')) ||
+      sniffRasterImageType(body);
+    if (!contentType) return null;
     return { ok: true, body, contentType };
   } catch {
     return null;

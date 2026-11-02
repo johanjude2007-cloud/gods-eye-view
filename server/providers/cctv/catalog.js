@@ -21,6 +21,7 @@ import {
   loadCalgarySourcesFromOpenData,
   loadCataloniaSourcesFromOpenData,
   loadHkSourcesFromOpenData,
+  loadSingaporeSourcesFromOpenData,
   loadDelDOTSourcesFromOpenData,
   loadKingCountySourcesFromOpenData,
   loadWsdotSourcesFromOpenData,
@@ -113,6 +114,11 @@ const LIVE_PACKS = [
     name: 'hk',
     enabled: () => envEnabled('CCTV_HK_ENABLED'),
     load: loadHkSourcesFromOpenData,
+  },
+  {
+    name: 'singapore',
+    enabled: () => envEnabled('CCTV_SG_ENABLED'),
+    load: loadSingaporeSourcesFromOpenData,
   },
   {
     name: 'deldot',

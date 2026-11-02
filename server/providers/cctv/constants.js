@@ -589,3 +589,31 @@ export const CCTV_MEDIA_FETCH_TIMEOUT_MS = 15 * 1000;
 export const CCTV_MEDIA_IDLE_TIMEOUT_MS = 30 * 1000;
 /** Declared size ceiling for fixed media responses. */
 export const CCTV_MEDIA_MAX_BODY_BYTES = 64 * 1024 * 1024;
+
+/** Singapore LTA expressway/border traffic cameras.
+ *
+ * Keyless path: the data.gov.sg real-time Traffic Images API, which currently
+ * publishes only the Tuas and Woodlands border-crossing cameras (~8). Frames
+ * are per-capture JPEGs on images.data.gov.sg, so a camera's URL changes each
+ * refresh — fine at the 15-minute catalog cadence.
+ *
+ * Full set (~90, all expressways) lives behind LTA DataMall and needs a free
+ * AccountKey; that path is added when a key is available, since its frames are
+ * expiring pre-signed URLs that need handling the keyless feed does not. */
+export const DEFAULT_SG_CAMERAS_URL =
+  'https://api.data.gov.sg/v1/transport/traffic-images';
+/** The only origin Singapore camera frames may come from (keyless feed). */
+export const SG_IMAGE_ORIGIN = 'https://images.data.gov.sg/api/traffic-images/';
+/** Well above the keyless feed's ~8 cameras; a DataMall key would raise the
+ * real count to ~90, all still under the catalog round-robin cap. */
+export const DEFAULT_SG_MAX_SOURCES = 120;
+/** Prioritization anchors so a lowered cap keeps island-wide coverage. */
+export const SG_ANCHORS = [
+  { lat: 1.3521, lon: 103.8198 }, // City centre
+  { lat: 1.4482, lon: 103.7717 }, // Woodlands / Causeway
+  { lat: 1.3403, lon: 103.6365 }, // Tuas / Second Link
+  { lat: 1.3644, lon: 103.9915 }, // Changi
+];
+/** Hard ceiling on the JSON body. The live feed is a few KB; this only exists
+ * so an unbounded upstream cannot be buffered without limit. */
+export const SG_MAX_CATALOG_BYTES = 2 * 1024 * 1024;

@@ -410,6 +410,17 @@ export function isLikelyHongKongCoordinate(lat, lon) {
   );
 }
 
+/** Singapore mainland and its immediate expressway approaches. */
+export function isLikelySingaporeCoordinate(lat, lon) {
+  return (
+    isPlausibleLatLon(lat, lon) &&
+    lat >= 1.13 &&
+    lat <= 1.48 &&
+    lon >= 103.6 &&
+    lon <= 104.1
+  );
+}
+
 /** Mainland Norway, with slack for the coast and the Finnmark border. */
 export function isLikelyNorwayCoordinate(lat, lon) {
   return (

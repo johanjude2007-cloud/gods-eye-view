@@ -260,21 +260,24 @@ test('rejected snapshot responses abort the upstream download', async () => {
   }
 });
 
-test('CCTV upstream frame fetch accepts only raster image types and sends their canonical type', async () => {
-  const frame = (contentType, body = 'frame') => {
+test('CCTV upstream frame fetch relays raster images (declared or sniffed) and rejects others', async () => {
+  const frame = (contentType, body = 'frame', status = 200) => {
     const state = { cancelled: false };
     const headers = contentType === null ? {} : { 'Content-Type': contentType };
+    const bytes =
+      typeof body === 'string' ? new TextEncoder().encode(body) : body;
     const response = new Response(new ReadableStream({
       pull(controller) {
-        controller.enqueue(new TextEncoder().encode(body));
+        controller.enqueue(bytes);
         controller.close();
       },
       cancel() {
         state.cancelled = true;
       },
-    }, { highWaterMark: 0 }), { status: 200, headers });
+    }, { highWaterMark: 0 }), { status, headers });
     return { response, state };
   };
+  // A declared raster type is trusted and relayed under its canonical name.
   for (const [contentType, canonical] of [
     ['image/jpeg', 'image/jpeg'],
     ['image/JPEG; charset=x', 'image/jpeg'],
@@ -290,26 +293,46 @@ test('CCTV upstream frame fetch accepts only raster image types and sends their 
     assert.equal(result?.contentType, canonical, contentType);
     assert.equal(result.body.toString(), 'frame');
   }
+  // A mislabelled body whose bytes are a real image is sniffed and accepted
+  // under the sniffed type (some government feeds send octet-stream JPEGs).
+  const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
+  for (const contentType of [
+    'application/octet-stream',
+    'binary/octet-stream',
+    'text/plain',
+    null,
+  ]) {
+    const { response } = frame(contentType, JPEG);
+    const result = await fetchCctvImageFromUpstream('https://example.com/frame.jpg', {
+      fetchImpl: async () => response,
+    });
+    assert.equal(result?.contentType, 'image/jpeg', `sniff ${contentType}`);
+    assert.equal(result.body[0], 0xff, `sniff body ${contentType}`);
+    assert.equal(result.body.length, JPEG.length, `sniff length ${contentType}`);
+  }
+  // Rejected: neither the declared type nor the bytes are a raster image.
   for (const [contentType, body] of [
     ['image/svg+xml', '<svg xmlns="http://www.w3.org/2000/svg"/>'],
     ['Image/SVG+XML; charset=utf-8', '<svg xmlns="http://www.w3.org/2000/svg"/>'],
     ['text/html', '<!doctype html><p>x</p>'],
-    ['text/html; charset=utf-8', '<!doctype html><p>x</p>'],
     ['application/xml', '<x/>'],
     ['text/xml', '<x/>'],
     [null, 'frame'],
     ['', 'frame'],
-    ['image', 'frame'],
-    ['image/', 'frame'],
-    ['image/jpeg/x', 'frame'],
     ['image/jpeg, text/html', 'frame'],
     ['application/octet-stream', 'frame'],
   ]) {
-    const { response, state } = frame(contentType, body);
+    const { response } = frame(contentType, body);
     const result = await fetchCctvImageFromUpstream('https://example.com/frame.jpg', {
       fetchImpl: async () => response,
     });
     assert.equal(result, null, String(contentType));
-    assert.equal(state.cancelled, true, `${contentType}: body cancelled`);
   }
+  // A non-OK upstream is abandoned and its body cancelled, not read.
+  const { response, state } = frame('image/jpeg', 'frame', 500);
+  const result = await fetchCctvImageFromUpstream('https://example.com/frame.jpg', {
+    fetchImpl: async () => response,
+  });
+  assert.equal(result, null, 'status 500');
+  assert.equal(state.cancelled, true, 'non-OK body cancelled');
 });

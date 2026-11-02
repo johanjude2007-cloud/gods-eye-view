@@ -233,6 +233,13 @@ export const DATA_CREDITS = [
       '<a href="https://data.austintexas.gov" target="_blank" rel="noopener">data.austintexas.gov</a>',
   },
   {
+    key: 'sg-cctv',
+    html:
+      'CCTV cameras &amp; frames: Land Transport Authority via ' +
+      '<a href="https://data.gov.sg" target="_blank" rel="noopener">data.gov.sg</a> ' +
+      '(Singapore Open Data Licence)',
+  },
+  {
     key: 'txdot-cctv',
     html:
       'CCTV cameras &amp; frames (Texas): ' +
