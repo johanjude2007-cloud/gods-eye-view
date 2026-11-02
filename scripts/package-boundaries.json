@@ -3167,7 +3167,8 @@
       "src/layers/internetOutages/source.js",
       "src/layers/naturalEvents/index.js",
       "src/layers/naturalEvents/records.js",
-      "src/layers/naturalEvents/source.js"
+      "src/layers/naturalEvents/source.js",
+      "src/maps/reconnectRefresh.js"
     ],
     "external": [
       "hls.js",

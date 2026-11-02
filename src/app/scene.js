@@ -14,6 +14,7 @@ import {
   governorRequestRender,
 } from '../renderGovernor.js';
 import { describeError } from './errors.js';
+import { installReconnectRefresh } from '../maps/reconnectRefresh.js';
 import { onLocaleChange, t } from '../i18n/index.js';
 
 /** Construct the application globe using the caller's local configuration. */
@@ -58,6 +59,10 @@ export async function createApplicationScene({
     if (!viewer.isDestroyed()) viewer.destroy();
   });
   defer(installTrackpadPinchZoom(viewer));
+  // A network drop can strand the globe on its coarsest tile; reload on reconnect.
+  defer(
+    installReconnectRefresh(viewer, { requestRender: governorRequestRender }),
+  );
   registerDataCredits(viewer, credits);
   configureCreditKeyboardAccess(document);
   defer(onLocaleChange(() => configureCreditKeyboardAccess(document)));
