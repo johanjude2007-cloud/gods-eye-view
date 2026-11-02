@@ -18,6 +18,9 @@ test('reference factories retain compatibility without starting acquisition or s
     'fire-perimeters',
     'cables',
     'gnss-integrity',
+    'world-events',
+    'internet-outages',
+    'natural-events',
   ]);
   assert.notEqual(first.earthquakes, second.earthquakes);
   assert.notEqual(first['air-quality'], second['air-quality']);
@@ -29,5 +32,9 @@ test('reference factories retain compatibility without starting acquisition or s
   assert.equal(typeof first['fire-perimeters'].getSnapshot, 'function');
   assert.equal(typeof first.cables.fetch, 'function');
   assert.equal(typeof first['gnss-integrity'].getSnapshot, 'function');
+  for (const key of ['world-events', 'internet-outages', 'natural-events']) {
+    assert.notEqual(first[key], second[key]);
+    assert.equal(typeof first[key].getSnapshot, 'function');
+  }
   assert.equal(requests, 0);
 });

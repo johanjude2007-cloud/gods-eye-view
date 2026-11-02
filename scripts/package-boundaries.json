@@ -3157,7 +3157,17 @@
       "src/ui/kit/UiBadge.vue",
       "src/ui/stores/globeActions.js",
       "src/ui/stores/recording.js",
-      "src/ui/i18n.js"
+      "src/ui/i18n.js",
+      "src/app/layers/worldSignals.js",
+      "src/layers/worldEvents/index.js",
+      "src/layers/worldEvents/records.js",
+      "src/layers/worldEvents/source.js",
+      "src/layers/internetOutages/index.js",
+      "src/layers/internetOutages/records.js",
+      "src/layers/internetOutages/source.js",
+      "src/layers/naturalEvents/index.js",
+      "src/layers/naturalEvents/records.js",
+      "src/layers/naturalEvents/source.js"
     ],
     "external": [
       "hls.js",
@@ -3756,7 +3766,17 @@
       "src/layers/wind/inspectionMarker.js",
       "src/ui/stores/bhoteKoshiPanel.js",
       "src/hudReadouts.js",
-      "src/ui/i18n.js"
+      "src/ui/i18n.js",
+      "src/app/layers/worldSignals.js",
+      "src/layers/worldEvents/index.js",
+      "src/layers/worldEvents/records.js",
+      "src/layers/worldEvents/source.js",
+      "src/layers/internetOutages/index.js",
+      "src/layers/internetOutages/records.js",
+      "src/layers/internetOutages/source.js",
+      "src/layers/naturalEvents/index.js",
+      "src/layers/naturalEvents/records.js",
+      "src/layers/naturalEvents/source.js"
     ],
     "external": [
       "hls.js",
@@ -4265,7 +4285,13 @@
       "src/layers/submarineCables/bundledSource.js",
       "src/layers/gnss/source.js",
       "src/layers/airQuality/model.js",
-      "src/layers/airQuality/source.js"
+      "src/layers/airQuality/source.js",
+      "src/layers/worldEvents/source.js",
+      "src/layers/worldEvents/records.js",
+      "src/layers/internetOutages/source.js",
+      "src/layers/internetOutages/records.js",
+      "src/layers/naturalEvents/source.js",
+      "src/layers/naturalEvents/records.js"
     ],
     "external": []
   },

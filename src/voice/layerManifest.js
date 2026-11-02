@@ -424,6 +424,11 @@ const layers = [
 export const VOICE_OFF_LAYERS = Object.freeze({
   'bhote-koshi-2026': 'scene-driven event layer (control_scene)',
   'bhote-koshi-locator': 'scene-driven event layer (control_scene)',
+  // The realtime prompt is at its size ceiling; these layers expose
+  // getAnalystRecords and can join the voice query surface once it has room.
+  'internet-outages': 'click cards only for now (voice prompt budget)',
+  'natural-events': 'click cards only for now (voice prompt budget)',
+  'world-events': 'click cards only for now (voice prompt budget)',
 });
 
 const TYPE_NAMES = Object.freeze({

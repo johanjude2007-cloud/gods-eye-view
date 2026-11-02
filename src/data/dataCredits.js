@@ -151,6 +151,27 @@ export const DATA_CREDITS = [
     html: 'Earthquakes: Data courtesy of the U.S. Geological Survey',
   },
   {
+    key: 'gdelt-events',
+    html:
+      'World news events: ' +
+      '<a href="https://www.gdeltproject.org/" target="_blank" rel="noopener">The GDELT Project</a> ' +
+      '(Events 2.0, machine-coded from news reports)',
+  },
+  {
+    key: 'ioda',
+    html:
+      'Internet outages: ' +
+      '<a href="https://ioda.inetintel.cc.gatech.edu/" target="_blank" rel="noopener">IODA</a>, ' +
+      'Internet Intelligence Lab, Georgia Institute of Technology',
+  },
+  {
+    key: 'nasa-eonet',
+    html:
+      'Storms, volcanoes &amp; floods: ' +
+      '<a href="https://eonet.gsfc.nasa.gov/" target="_blank" rel="noopener">NASA EONET</a> ' +
+      '(Earth Observatory Natural Event Tracker)',
+  },
+  {
     key: 'nasa-gibs',
     html:
       'Recent imagery: We acknowledge the use of imagery provided by services from ' +

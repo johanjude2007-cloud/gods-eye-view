@@ -11,12 +11,14 @@
   ["fire-perimeters", "2"],
   ["flights", "f"],
   ["gnss-integrity", "3"],
+  ["internet-outages", "6"],
   ["local-dams", "q"],
   ["local-datacenters", "d"],
   ["local-firms", "w"],
   ["military", "m"],
   ["military-awareness", "g"],
   ["military-installations", "i"],
+  ["natural-events", "7"],
   ["radio", "r"],
   ["recent-imagery", "1"],
   ["rocket-launches", "x"],
@@ -30,5 +32,6 @@
   ["weather-lightning", "l"],
   ["weather-radar", "v"],
   ["weather-satellite", "o"],
-  ["wind", "k"]
+  ["wind", "k"],
+  ["world-events", "8"]
 ]
